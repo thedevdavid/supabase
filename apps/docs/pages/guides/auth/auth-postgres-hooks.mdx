@@ -25,7 +25,7 @@ You can use hooks at specific points along an Auth flow and you can perform cust
 - MFA Verification Attempt Hook
 - Password Verification Attempt Hook
 
-**Free** **
+**Free**
 
 - Custom Access Token Hook
 
@@ -471,6 +471,56 @@ revoke execute
 	on function public.custom_access_token_hook
 	from authenticated, anon;
 ```
+
+## Creating a Hook
+
+Oftentimes, the examples above might not exactly fit your exact use case. In such scenarios, you can consider writing your own hook based off the examples above.
+
+### Writing the Hook
+
+Head to the `SQL Editor > Templates` and select the corresponding template (e.g. `MFA Verification Attempt` ). This will generate a function signature for the corresponding extensibility point.
+
+Here is an example for the *MFA Verification Attempt* Hook
+
+```sql
+create
+or replace function mfa_verification_attempt(event jsonb) returns jsonb as $$
+declare
+  -- Add your variables here
+begin
+
+	-- Add your logic here
+  return response
+end;
+$$ language plpgsql;
+```
+
+### Granting Hook Permissions
+
+<Admonition type="warn">
+Avoid adding a `security definer` tag to the function to avoid permission errors.
+
+</Admonition>
+
+By default, Postgres functions are tagged with `security invoker` and will run with the permissions of the user that calls it. In the case of Auth Hooks, `supabase_auth_admin`  is the invoker and it will run with the permissions of `supabase_auth_admin`.
+
+In contrast, the `security definer` tag specifies that the hook is to be executed with the privileges of the user that owns it.  In the case of functions created via the Supabase Dashboard this is `postgres` which does not have permissions over the Auth schema. As such, introducing a `security definer` tag could prevent Supabase Auth from having the appropriate permissions to access tables or execute functions.
+
+As with the specific case examples above you will need to grant appropriate permissions to the functions and tables involved.
+
+```sql
+grant execute
+	on function public.your_function_name
+	to supabase_auth_admin;
+
+revoke execute
+	on function public.your_function_name
+	from authenticated, anon;
+```
+
+### Timeouts
+
+Hook timeouts are controlled by a local statement timeout scoped to the Postgres Function Hook. Ensure that your hooks complete within **2 seconds** to avoid any errors
 
 export const Page = ({ children }) => <Layout meta={meta} children={children} />
 export default Page
